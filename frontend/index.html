@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>NoteX</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 0 10px;
+      background: #f5f5f5;
+    }
+    h1 {
+      text-align: center;
+    }
+    form {
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    input, textarea, button {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+    button {
+      cursor: pointer;
+    }
+    .note {
+      background: #fff;
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .note-title {
+      font-weight: bold;
+    }
+    .note-date {
+      font-size: 0.8rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <h1>NoteX</h1>
+
+  <form id="note-form">
+    <input id="title" placeholder="Título" required />
+    <textarea id="description" placeholder="Descripción" required></textarea>
+    <button type="submit">Crear nota</button>
+  </form>
+
+  <h2>Notas</h2>
+  <div id="notes-container">Cargando notas...</div>
+
+  <script>
+    // ⚠️ Usa tu URL de Cloud Function
+    const API_BASE = "https://us-east1-fluid-house-477701-v2.cloudfunctions.net/notexApi";
+
+    async function loadNotes() {
+      const container = document.getElementById("notes-container");
+      container.textContent = "Cargando notas...";
+      try {
+        const res = await fetch(API_BASE + "/notes");
+        const data = await res.json();
+
+        if (!Array.isArray(data)) {
+          container.textContent = "Error al cargar notas.";
+          console.error("Respuesta inesperada:", data);
+          return;
+        }
+
+        if (data.length === 0) {
+          container.textContent = "No hay notas todavía.";
+          return;
+        }
+
+        container.innerHTML = "";
+        data.forEach(note => {
+          const div = document.createElement("div");
+          div.className = "note";
+          div.innerHTML = `
+            <div class="note-title">${note.title}</div>
+            <div>${note.description}</div>
+            <div class="note-date">Creada: ${new Date(note.created_at).toLocaleString()}</div>
+          `;
+          container.appendChild(div);
+        });
+      } catch (err) {
+        console.error(err);
+        container.textContent = "Error al cargar notas (ver consola).";
+      }
+    }
+
+    async function createNote(event) {
+      event.preventDefault();
+      const title = document.getElementById("title").value.trim();
+      const description = document.getElementById("description").value.trim();
+      if (!title || !description) return;
+
+      try {
+        const res = await fetch(API_BASE + "/notes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, description })
+        });
+        const data = await res.json();
+        console.log("Nota creada:", data);
+        document.getElementById("title").value = "";
+        document.getElementById("description").value = "";
+        await loadNotes();
+      } catch (err) {
+        console.error("Error creando nota:", err);
+        alert("Error creando nota (ver consola).");
+      }
+    }
+
+    document.getElementById("note-form").addEventListener("submit", createNote);
+
+    loadNotes();
+  </script>
+</body>
+</html>
